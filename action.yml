@@ -1,0 +1,106 @@
+name: 'ESO Addon Lua Check'
+description: 'Syntax-checks every .lua file (luac5.1 -p) and runs static analysis (luacheck via the real lunarmodules/luacheck Docker image) for an Elder Scrolls Online addon, annotating findings directly on the offending file and line.'
+author: 'MPHONlC'
+branding:
+  icon: 'check-circle'
+  color: 'green'
+
+inputs:
+  luacheck_image:
+    description: 'The lunarmodules/luacheck Docker image to use'
+    required: false
+    default: 'ghcr.io/lunarmodules/luacheck:v1.2.0'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Lua 5.1
+      shell: bash
+      run: sudo apt-get update && sudo apt-get install -y lua5.1
+
+    - name: Syntax check every .lua file
+      id: syntax_check
+      shell: bash
+      run: |
+        : > syntax_errors.txt
+        STATUS=0
+        while IFS= read -r -d '' f; do
+          ERR=$(luac5.1 -p "$f" 2>&1) || { echo "$ERR" >> syntax_errors.txt; STATUS=1; }
+        done < <(find . -name "*.lua" -print0)
+        exit $STATUS
+
+    - name: Annotate syntax check
+      if: always()
+      shell: bash
+      run: |
+        STATUS="${{ steps.syntax_check.outcome }}"
+        if [ "$STATUS" == "success" ]; then
+          echo "::notice title=Lua Syntax Check Passed::No syntax errors found."
+        else
+          echo "::error title=Lua Syntax Check Failed::One or more .lua files failed to parse - see annotations below."
+        fi
+        if [ -s syntax_errors.txt ]; then
+          while IFS= read -r line; do
+            if [[ "$line" =~ ^luac5\.1:\ (.+):([0-9]+):\ (.+)$ ]]; then
+              FILE="${BASH_REMATCH[1]#./}"
+              LINE_NUM="${BASH_REMATCH[2]}"
+              MSG="${BASH_REMATCH[3]}"
+              echo "::error file=$FILE,line=$LINE_NUM::$MSG"
+            fi
+          done < syntax_errors.txt
+        fi
+        {
+          echo "## Lua Syntax Check"
+          echo ""
+          if [ "$STATUS" == "success" ]; then
+            echo "No syntax errors found."
+          else
+            echo '```'
+            cat syntax_errors.txt
+            echo '```'
+          fi
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Static lint (luacheck)
+      id: luacheck
+      shell: bash
+      run: |
+        set +e
+        docker run --rm -v "$PWD":/checkout -w /checkout ${{ inputs.luacheck_image }} --formatter plain --no-color --codes . > luacheck_output.txt 2>&1
+        EXIT_CODE=$?
+        set -e
+        cat luacheck_output.txt
+        exit $EXIT_CODE
+
+    - name: Annotate luacheck findings
+      if: always()
+      shell: bash
+      run: |
+        STATUS="${{ steps.luacheck.outcome }}"
+        if [ "$STATUS" == "success" ]; then
+          echo "::notice title=Lua Check Passed::No lint warnings or errors found."
+        else
+          echo "::error title=Lua Check Failed::Luacheck found issues - see annotations below."
+        fi
+        if [ -f luacheck_output.txt ]; then
+          while IFS= read -r line; do
+            if [[ "$line" =~ ^(.+):([0-9]+):([0-9]+):\ (.+)$ ]]; then
+              FILE="${BASH_REMATCH[1]#./}"
+              LINE_NUM="${BASH_REMATCH[2]}"
+              COL="${BASH_REMATCH[3]}"
+              MSG="${BASH_REMATCH[4]}"
+              echo "::error file=$FILE,line=$LINE_NUM,col=$COL::$MSG"
+            fi
+          done < luacheck_output.txt
+        fi
+        {
+          echo "## Lua Check"
+          echo ""
+          if [ -s luacheck_output.txt ]; then
+            echo '```'
+            cat luacheck_output.txt
+            echo '```'
+          else
+            echo "No lint warnings or errors found."
+          fi
+        } >> "$GITHUB_STEP_SUMMARY"
