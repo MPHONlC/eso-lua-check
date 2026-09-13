@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: MPHONlC/lua-check@Version-0.0.2
+      - uses: MPHONlC/lua-check@Version-0.0.3
 ```
 
 ## Inputs
