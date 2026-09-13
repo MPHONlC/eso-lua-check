@@ -32,7 +32,10 @@ jobs:
 ## Requirements
 
 - `docker` must be available on the runner (true by default on GitHub-hosted `ubuntu-latest`).
-- A `.luacheckrc` at the repo root, tuned to your project's actual API surface (undeclared globals will otherwise show as "accessing undefined variable" warnings).
+- A `.luacheckrc` at the repo root, tuned to your project's actual API surface.
+
+> [!WARNING]
+> Without a `.luacheckrc` tuned to your project's real globals, every one of them shows up as an "accessing undefined variable" warning. See [lunarmodules/luacheck's docs](https://luacheck.readthedocs.io/) for how to write one.
 
 ## License
 
