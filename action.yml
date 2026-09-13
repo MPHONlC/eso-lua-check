@@ -1,5 +1,5 @@
-name: 'ESO Addon Lua Check'
-description: 'Syntax-checks every .lua file (luac5.1 -p) and runs static analysis.'
+name: 'Lua Check'
+description: 'Syntax-checks every .lua file (luac5.1 -p) and runs static analysis via luacheck.'
 author: 'MPHONlC'
 branding:
   icon: 'check-circle'
