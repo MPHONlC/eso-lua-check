@@ -1,4 +1,4 @@
-# ESO Addon Lua Check
+# Lua Check
 
 Syntax-checks every `.lua` file in your Elder Scrolls Online addon (`luac5.1 -p`) and runs real static analysis (`luacheck`, via the actual [lunarmodules/luacheck](https://github.com/lunarmodules/luacheck) Docker image) - findings are annotated directly on the offending file and line, and a job summary is generated either way.
 
